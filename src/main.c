@@ -1,4 +1,6 @@
+#include "uart.h"
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 enum nec_decoder_state_t
 {
@@ -16,8 +18,22 @@ enum nec_decoder_state_t state = 0;
 
 int main(void)
 {
-    // Setup interrupt for falling edge
-    // Enable interrupt for the pin
+    // init_uart()
+    init_uart();
+    // Setup interrupt for falling edge for INT0 pin (PD2)
+    EICRA = _BV(ISC01);
+    // Enable interrupt for the INT0 pin (PD2)
+    EIMSK = _BV(INT0);
     // enable global interrupts
-    while (1) {}
+    sei();
+
+    while (1) {
+    }
+}
+
+
+ISR(INT0_vect)
+{
+    static int count = 0;
+    write_usart('a' + ((count++) % 10));
 }
