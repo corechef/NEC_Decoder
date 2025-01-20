@@ -1,22 +1,8 @@
 #include "uart.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <stdint.h>
-#include <stdlib.h>
-
-enum nec_decoder_state_t
-{
-    NEC_DECODER_IDLE,
-    NEC_DECODER_EXPECTING_HEADER,
-    NEC_DECODER_DECODING,
-    NEC_DECODER_STATE_MAX
-};
-
-enum nec_decoder_state_t state = NEC_DECODER_IDLE;
-int count = 0;
-uint16_t prev_time = 0;
-uint16_t current_time = 0;
-uint32_t command = 0;
+#include "state.h"
+#include "stdlib.h"
 
 // Start with  NEC_DECODER_IDLE,
 // on first interrupt, record time and transition to
@@ -24,17 +10,13 @@ uint32_t command = 0;
 
 int main(void)
 {
-    // init_uart()
     init_uart();
 
-    // init 16-bit timer with prescaler 64
-    TCCR1B = _BV(CS11) | _BV(CS10);
+    start_timer();
 
-    // Setup interrupt for falling edge for INT0 pin (PD2)
-    EICRA = _BV(ISC01);
+    setup_interrupt_pin();
 
-    // Enable interrupt for the INT0 pin (PD2)
-    EIMSK = _BV(INT0);
+    enable_external_interrupt();
 
     // enable global interrupts
     sei();
@@ -46,81 +28,67 @@ int main(void)
 
 ISR(INT0_vect)
 {
-    current_time = TCNT1;
-    TCNT1 = 0;
-    if (state == NEC_DECODER_IDLE)
+    record_time_and_reset_timer();
+
+    if (is_state_idle())
     {
+        transition_to_expecting_header();
         write_usart('i');
-        write_usart('\r');
-        write_usart('\n');
-        state = NEC_DECODER_EXPECTING_HEADER;
     }
-    else if (state == NEC_DECODER_EXPECTING_HEADER)
+    else if (is_state_expecting_header())
     {
-        if (2700 < current_time && current_time < 2900)
+        if (got_reset_signal())
         {
-            // take action on repeat
+            transition_to_idle_state();
             write_usart('r');
-            // then go idle, reset state
-            state = NEC_DECODER_IDLE;
-            count = 0;
-            command = 0;
         }
-        else if (3300 < current_time && current_time < 3500)
+        else if (got_header_signal())
         {
-            state = NEC_DECODER_DECODING;
-            // Let next states take action by actually decoding the command
-            write_usart('d');
+            transition_to_decoding();
+            write_usart('h');
         }
-        else {
-            // Failure, reset state
-            write_usart('f');
-            write_usart('a');
-            state = NEC_DECODER_IDLE;
-            count = 0;
-            command = 0;
+        else
+        {
+            transition_to_idle_state();
+            write_usart('e');
         }
     }
-    else if (state == NEC_DECODER_DECODING)
+    else if (is_state_decoding())
     {
-        if (270 < current_time && current_time < 300)
+        if (got_zero_bit_signal())
         {
-            // decoded a 0
-            command *= 2;
-            // increment decode counter
-            count++;
+            decode_bit_0();
             write_usart('0');
         }
-        else if (540 < current_time && current_time < 580)
+        else if (got_one_bit_signal())
         {
-            // decoded a 1
-            command *= 2;
-            command += 1;
-            // increment decode counter
-            count++;
+            decode_bit_1();
             write_usart('1');
         }
         else 
         {
-            // failure, reset state
-            state = NEC_DECODER_IDLE;
-            count = 0;
-            command = 0;
-            write_usart('f');
-            write_usart('b');
+            transition_to_idle_state();
+            write_usart('e');
         }
 
-        if (count == 32)
+        if (is_last_decoding_done())
         {
-            // command read successfully
-            // execute command
-            // reset state
-            state = NEC_DECODER_IDLE;
-            count = 0;
-            command = 0;
-            write_usart('s');
-            write_usart('\r');
+            // run your code here
+            char number[8];
+            ultoa(get_command(), number, 16);
+            write_usart('c');
+            write_usart(number[0]);
+            write_usart(number[1]);
+            write_usart(number[2]);
+            write_usart(number[3]);
+            write_usart(number[4]);
+            write_usart(number[5]);
+            write_usart(number[6]);
+            write_usart(number[7]);
+            write_usart('h');
             write_usart('\n');
+
+            transition_to_idle_state();
         }
     }
 }
