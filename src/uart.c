@@ -24,7 +24,7 @@ uint8_t read_usart()
 
 void write_usart(uint8_t data)
 {
-  loop_until_bit_is_set(UCSR0A, UDRE0);
+  // loop_until_bit_is_set(UCSR0A, UDRE0);
 
   UDR0 = data;
 }

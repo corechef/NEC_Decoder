@@ -50,10 +50,18 @@ bool is_last_decoding_done(void)
     return received_bit_count == BITS_PER_NEC_PACKET;
 }
 
+void init_timer(void)
+{
+    TCCR1A |= _BV(WGM10) | _BV(WGM11);
+    TCCR1B |= _BV(WGM12) | _BV(WGM13);
+    OCR1A = HEADER_TICK_UPPERBOUND;
+    TIMSK1 = _BV(TOIE1);
+}
+
 void start_timer(void)
 {
     // init 16-bit timer with prescaler 64
-    TCCR1B = _BV(CS11) | _BV(CS10);
+    TCCR1B |= _BV(CS11) | _BV(CS10);
 }
 
 void setup_interrupt_pin(void)

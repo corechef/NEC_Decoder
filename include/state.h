@@ -9,6 +9,8 @@ bool is_state_decoding(void);
 
 bool is_last_decoding_done(void);
 
+void init_timer(void);
+
 void start_timer(void);
 
 void setup_interrupt_pin(void);

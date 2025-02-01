@@ -4,13 +4,11 @@
 #include "state.h"
 #include "stdlib.h"
 
-// Start with  NEC_DECODER_IDLE,
-// on first interrupt, record time and transition to
-// NEC_DECODER_HEADER,
-
 int main(void)
 {
     init_uart();
+
+    init_timer();
 
     start_timer();
 
@@ -39,6 +37,7 @@ ISR(INT0_vect)
     {
         if (got_reset_signal())
         {
+            // redo the last command
             transition_to_idle_state();
             write_usart('r');
         }
@@ -73,22 +72,14 @@ ISR(INT0_vect)
 
         if (is_last_decoding_done())
         {
-            // run your code here
-            char number[8];
-            ultoa(get_command(), number, 16);
-            write_usart('c');
-            write_usart(number[0]);
-            write_usart(number[1]);
-            write_usart(number[2]);
-            write_usart(number[3]);
-            write_usart(number[4]);
-            write_usart(number[5]);
-            write_usart(number[6]);
-            write_usart(number[7]);
-            write_usart('h');
-            write_usart('\n');
-
+            // your code executing command here
             transition_to_idle_state();
+            write_usart('l');
         }
     }
+}
+
+ISR(TIMER1_OVF_vect)
+{
+    transition_to_idle_state();
 }
