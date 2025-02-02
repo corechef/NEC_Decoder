@@ -2,7 +2,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "state.h"
-#include "stdlib.h"
 
 int main(void)
 {
@@ -72,9 +71,17 @@ ISR(INT0_vect)
 
         if (is_last_decoding_done())
         {
-            // your code executing command here
+            if (check_complement())
+            {
+                // your code executing command here
+                execute_something();
+            }
+            else
+            {
+                write_usart('m');
+            }
+
             transition_to_idle_state();
-            write_usart('l');
         }
     }
 }

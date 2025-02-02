@@ -38,3 +38,7 @@ bool got_zero_bit_signal(void);
 bool got_one_bit_signal(void);
 
 uint32_t get_command(void);
+
+bool check_complement(void);
+
+void execute_something(void);
